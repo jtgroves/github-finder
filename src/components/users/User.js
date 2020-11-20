@@ -9,27 +9,31 @@ const User = ({ match }) => {
 
   const { loading, user, getUser, getUserRepos, repos } = githubContext;
 
-  useEffect(() => {
-    getUser(match.params.login);
-    getUserRepos(match.params.login);
-    // eslint-disable-next-line
-  }, []);
-
   const {
     name,
-    avatar_url,
-    location,
-    bio,
-    blog,
-    login,
-    html_url,
-    company,
-    followers,
-    following,
-    public_repos,
-    public_gists,
-    hireable,
+    comics = {},
+    events = {},
+    series = {},
+    stories = {},
+    urls,
+    thumbnail: { extension, path } = {},
   } = user;
+
+  // console.log(name);
+
+  useEffect(() => {
+    getUser(match.params.login);
+
+    // async function series() {
+    if (series.items != undefined) {
+      getUserRepos(series.items);
+    }
+    // eslint-disable-next-line
+  }, [name]);
+
+  String.prototype.capitalize = function () {
+    return this.charAt(0).toUpperCase() + this.slice(1);
+  };
 
   if (loading) return <Spinner />;
 
@@ -38,65 +42,42 @@ const User = ({ match }) => {
       <Link to="/" className="btn btn-light">
         Back to Search
       </Link>
-      Hireable:{' '}
-      {hireable ? (
-        <i className="fas fa-check text-success" />
-      ) : (
-        <i className="fas fa-times-circle text-danger" />
-      )}
       <div className="card grid-2">
         <div className="all-center">
           <img
-            src={avatar_url}
+            src={`${path}.${extension}`}
             className="round-img"
             alt=""
             style={{ width: '150px' }}
           />
           <h1>{name}</h1>
-          <p>Location: {location}</p>
         </div>
         <div>
-          {bio && (
+          {urls && (
             <Fragment>
-              <h3>Bio</h3>
-              <p>{bio}</p>
+              {urls.map((url) => {
+                if (url.type === 'detail') {
+                  return '';
+                } else {
+                  return (
+                    <div>
+                      <h4>{url.type.capitalize()}</h4>
+                      <a href={url.url}>Link to {url.type}</a>
+                    </div>
+                  );
+                }
+              })}
             </Fragment>
           )}
-          <a href={html_url} className="btn btn-dark my-1">
-            Visit Github Profile
-          </a>
-          <ul>
-            <li>
-              {login && (
-                <Fragment>
-                  <strong>Username:</strong> {login}
-                </Fragment>
-              )}
-            </li>
-            <li>
-              {company && (
-                <Fragment>
-                  <strong>Company:</strong> {company}
-                </Fragment>
-              )}
-            </li>
-            <li>
-              {blog && (
-                <Fragment>
-                  <strong>Website:</strong> {blog}
-                </Fragment>
-              )}
-            </li>
-          </ul>
         </div>
       </div>
       <div className="card text-center">
-        <div className="badge badge-primary">Followers: {followers}</div>
-        <div className="badge badge-success">Following: {following}</div>
-        <div className="badge badge-light">Public Repos: {public_repos}</div>
-        <div className="badge badge-dark">Public Gists: {public_gists}</div>
+        <div className="badge badge-primary">Comics: {comics.available}</div>
+        <div className="badge badge-success">Events: {events.available}</div>
+        <div className="badge badge-light">Series: {series.available}</div>
+        <div className="badge badge-dark">Stories: {stories.available}</div>
       </div>
-      <Repos repos={repos} />
+      {/* <Repos repos={repos} /> */}
     </Fragment>
   );
 };

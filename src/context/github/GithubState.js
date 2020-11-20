@@ -2,6 +2,8 @@ import React, { useReducer } from 'react';
 import axios from 'axios';
 import GithubContext from './githubContext';
 import GithubReducer from './githubReducer';
+import md5 from 'js-md5';
+
 import {
   SEARCH_USERS,
   SET_LOADING,
@@ -9,39 +11,44 @@ import {
   GET_USER,
   GET_REPOS,
 } from '../types';
+import githubContext from './githubContext';
 
-let githubClientId;
-let githubClientSecret;
+let marvelClientId;
+let marvelClientSecret;
 
-if (process.env.NODE_ENV !== 'production') {
-  githubClientId = process.env.REACT_APP_GITHUB_CLIENT_ID;
-  githubClientSecret = process.env.REACT_APP_GITHUB_CLIENT_SECRET;
-} else {
-  githubClientId = process.env.GITHUB_CLIENT_ID;
-  githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
-}
+// if (process.env.NODE_ENV !== 'production') {
+marvelClientId = process.env.REACT_APP_MARVEL_CLIENT_ID;
+marvelClientSecret = process.env.REACT_APP_MARVEL_CLIENT_SECRET;
+// } else {
+//   marvelClientId = process.env.GITHUB_CLIENT_ID;
+//   marvelClientSecret = process.env.GITHUB_CLIENT_SECRET;
+// }
 
 const GithubState = (props) => {
   const initialState = {
     users: [],
-    user: {},
+    user: [],
     repos: [],
     loading: false,
   };
 
   const [state, dispatch] = useReducer(GithubReducer, initialState);
 
+  const ts = Number(new Date());
+  const hash = md5.create();
+  hash.update(ts + marvelClientSecret + marvelClientId);
+
   // Search GitHub Users
   const searchUsers = async (text) => {
     setLoading();
 
     const res = await axios.get(
-      `https://api.github.com/search/users?q=${text}&client_id=${githubClientId}&client_secret=${githubClientSecret}`
+      `https://gateway.marvel.com:443/v1/public/characters?ts=${ts}&nameStartsWith=${text}&apikey=${marvelClientId}&hash=${hash.hex()}`
     );
 
     dispatch({
       type: SEARCH_USERS,
-      payload: res.data.items,
+      payload: res.data.data.results,
     });
   };
 
@@ -50,26 +57,36 @@ const GithubState = (props) => {
     setLoading();
 
     const res = await axios.get(
-      `https://api.github.com/users/${username}?&client_id=${githubClientId}&client_secret=${githubClientSecret}`
+      `https://gateway.marvel.com:443/v1/public/characters?ts=${ts}&name=${username}&apikey=${marvelClientId}&hash=${hash.hex()}`
     );
 
     dispatch({
       type: GET_USER,
-      payload: res.data,
+      payload: res.data.data.results[0],
     });
   };
 
-  // Get Repos
-  const getUserRepos = async (username) => {
+  // Get Series
+  const getUserRepos = async (series) => {
     setLoading();
 
-    const res = await axios.get(
-      `https://api.github.com/users/${username}/repos?per_page=5&sort=created:asc&&client_id=${githubClientId}&client_secret=${githubClientSecret}`
-    );
+    const results = [];
+
+    for (let i = 0; i < series.length; i++) {
+      const item = series[i];
+      const url = item.resourceURI;
+      const splitArray = url.split('/');
+      const series_id = splitArray.slice(-1)[0];
+
+      const res = await axios.get(
+        `https://gateway.marvel.com:443/v1/public/series/${series_id}?ts=${ts}&apikey=${marvelClientId}&hash=${hash.hex()}`
+      );
+      results.push(res.data);
+    }
 
     dispatch({
       type: GET_REPOS,
-      payload: res.data,
+      payload: results,
     });
   };
 
